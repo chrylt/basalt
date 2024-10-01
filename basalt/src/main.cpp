@@ -2,6 +2,8 @@
 #include <GLFW/glfw3.h>      // Include GLFW library
 #include <iostream>
 #include <filesystem>
+#include <glm/glm.hpp>       // Include GLM library
+#include <glm/gtc/matrix_transform.hpp>  // Include GLM transformations
 
 // stb_image inclusion
 #define STB_IMAGE_IMPLEMENTATION
@@ -49,6 +51,24 @@ int main() {
     }
     else {
         std::cerr << "Failed to load image using stb_image!" << '\n';
+    }
+
+    // ==================== GLM Test ====================
+    std::cout << "Testing GLM library..." << '\n';
+
+    // Create two glm vectors
+    constexpr glm::vec3 vectorA(1.0f, 2.0f, 3.0f);
+    constexpr glm::vec3 vectorB(4.0f, 5.0f, 6.0f);
+
+    // Perform a vector addition
+    constexpr glm::vec3 vectorSum = vectorA + vectorB;
+
+    // Check if the result is correct
+    if constexpr (vectorSum == glm::vec3(5.0f, 7.0f, 9.0f)) {
+        std::cout << "GLM vector addition test passed!" << '\n';
+    }
+    else {
+        std::cerr << "GLM vector addition test failed!" << '\n';
     }
 
     // ==================== Main Loop ====================
