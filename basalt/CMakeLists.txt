@@ -45,7 +45,7 @@ FetchContent_MakeAvailable(assimp)
 find_package(Vulkan REQUIRED)
 
 # Define the executable
-add_executable(Basalt src/main.cpp)
+add_executable(Basalt src/main.cpp src/library_test.cpp src/stb_image_impl.cpp)
 
 # Include directories
 target_include_directories(Basalt PUBLIC ${stb_SOURCE_DIR} ${Vulkan_INCLUDE_DIR})
