@@ -1,13 +1,42 @@
-#define GLFW_INCLUDE_VULKAN  // Include Vulkan headers in GLFW
-#include <GLFW/glfw3.h>      // Include GLFW library
 #include <iostream>
 #include <filesystem>
-#include <glm/glm.hpp>       // Include GLM library
-#include <glm/gtc/matrix_transform.hpp>  // Include GLM transformations
+
+// glfw
+#define GLFW_INCLUDE_VULKAN  // Include Vulkan headers in GLFW
+#include <GLFW/glfw3.h>
+
+// glm
+#include <glm/glm.hpp>
+#include <glm/gtc/matrix_transform.hpp>
 
 // stb_image inclusion
 #define STB_IMAGE_IMPLEMENTATION
 #include <stb_image.h>
+
+// assimp
+#include <assimp/Importer.hpp>   // Assimp's main include
+#include <assimp/scene.h>        // Output data structure
+#include <assimp/postprocess.h>  // Post processing flags
+
+void loadModel(const std::string& filePath) {
+    Assimp::Importer importer;
+
+    // Load the model file
+    const aiScene* scene = importer.ReadFile(filePath, aiProcess_Triangulate);
+
+    if (!scene || scene->mFlags & AI_SCENE_FLAGS_INCOMPLETE || !scene->mRootNode) {
+        std::cerr << "ERROR::ASSIMP:: " << importer.GetErrorString() << '\n';
+        return;
+    }
+
+    // Print basic information about the loaded model
+    std::cout << "Loaded model: " << filePath << '\n';
+    std::cout << "Number of meshes: " << scene->mNumMeshes << '\n';
+    for (unsigned int i = 0; i < scene->mNumMeshes; i++) {
+	    const aiMesh* mesh = scene->mMeshes[i];
+        std::cout << "Mesh " << i << ": Vertices = " << mesh->mNumVertices << ", Faces = " << mesh->mNumFaces << '\n';
+    }
+}
 
 int main() {
     // ==================== GLFW Test ====================
@@ -70,6 +99,11 @@ int main() {
     else {
         std::cerr << "GLM vector addition test failed!" << '\n';
     }
+
+    // ==================== Assimp Test ====================
+
+    loadModel((baseResourcePath / "cube.obj").string());
+    loadModel((baseResourcePath / "cube.fbx").string());
 
     // ==================== Main Loop ====================
     while (!glfwWindowShouldClose(window)) {

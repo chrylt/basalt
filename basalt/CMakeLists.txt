@@ -13,7 +13,7 @@ set(FETCHCONTENT_QUIET OFF)
 FetchContent_Declare(
     glm
     GIT_REPOSITORY https://github.com/g-truc/glm.git
-    GIT_TAG 0.9.9.8
+    GIT_TAG 1.0.1
 )
 FetchContent_MakeAvailable(glm)
 
@@ -21,7 +21,7 @@ FetchContent_MakeAvailable(glm)
 FetchContent_Declare(
     glfw
     GIT_REPOSITORY https://github.com/glfw/glfw.git
-    GIT_TAG 3.3.8
+    GIT_TAG 3.4
 )
 FetchContent_MakeAvailable(glfw)
 
@@ -33,6 +33,14 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(stb)
 
+# Assimp (3D resources loading library)
+FetchContent_Declare(
+    assimp
+    GIT_REPOSITORY https://github.com/assimp/assimp.git
+    GIT_TAG v5.4.3
+)
+FetchContent_MakeAvailable(assimp)
+
 # Vulkan (Graphics API)
 find_package(Vulkan REQUIRED)
 
@@ -43,5 +51,5 @@ add_executable(Basalt src/main.cpp)
 target_include_directories(Basalt PUBLIC ${stb_SOURCE_DIR} ${Vulkan_INCLUDE_DIR})
 
 # Link libraries
-target_link_libraries(Basalt PUBLIC glm glfw Vulkan::Vulkan)
+target_link_libraries(Basalt PUBLIC glm glfw Vulkan::Vulkan assimp::assimp)
 
