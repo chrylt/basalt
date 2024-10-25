@@ -15,19 +15,28 @@ VkPhysicalDevice physicalDevice = VK_NULL_HANDLE;
 VkDevice device;
 VkQueue graphicsQueue;
 VkSwapchainKHR swapChain;
+VkExtent2D swapChainExtent;
 VkSurfaceKHR surface;  // Surface needed for swap chain creation
 std::vector<VkImage> swapChainImages;
 std::vector<VkImageView> swapChainImageViews;
 constexpr VkSurfaceFormatKHR surfaceFormat = { VK_FORMAT_B8G8R8A8_SRGB, VK_COLOR_SPACE_SRGB_NONLINEAR_KHR };
 VkRenderPass renderPass;
+std::vector<VkFramebuffer> swapChainFramebuffers;
 
 void cleanup() {
 
+    // Destroy framebuffers
+    for (const auto framebuffer : swapChainFramebuffers) {
+        vkDestroyFramebuffer(device, framebuffer, nullptr);
+    }
+
     // Destroy render pass
-    vkDestroyRenderPass(device, renderPass, nullptr);
+    if (renderPass != VK_NULL_HANDLE) {
+        vkDestroyRenderPass(device, renderPass, nullptr);
+    }
 
     // Destroy image views
-    for (auto imageView : swapChainImageViews) {
+    for (const auto imageView : swapChainImageViews) {
         vkDestroyImageView(device, imageView, nullptr);
     }
 
@@ -192,11 +201,10 @@ void createSwapChain(GLFWwindow* window) {
 
     constexpr VkPresentModeKHR presentMode = VK_PRESENT_MODE_FIFO_KHR;
 
-    VkExtent2D extent;
     int width, height;
     glfwGetFramebufferSize(window, &width, &height);
-    extent.width = static_cast<uint32_t>(width);
-    extent.height = static_cast<uint32_t>(height);
+    swapChainExtent.width = static_cast<uint32_t>(width);
+    swapChainExtent.height = static_cast<uint32_t>(height);
 
     uint32_t imageCount = capabilities.minImageCount + 1;
     if (capabilities.maxImageCount > 0 && imageCount > capabilities.maxImageCount) {
@@ -209,7 +217,7 @@ void createSwapChain(GLFWwindow* window) {
     createInfo.minImageCount = imageCount;
     createInfo.imageFormat = surfaceFormat.format;
     createInfo.imageColorSpace = surfaceFormat.colorSpace;
-    createInfo.imageExtent = extent;
+    createInfo.imageExtent = swapChainExtent;
     createInfo.imageArrayLayers = 1;
     createInfo.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
 
@@ -318,6 +326,30 @@ void createRenderPass() {
     }
 }
 
+void createFramebuffers() {
+    swapChainFramebuffers.resize(swapChainImageViews.size());
+
+    for (size_t i = 0; i < swapChainImageViews.size(); i++) {
+	    const VkImageView attachments[] = {
+            swapChainImageViews[i]  // Attach each swap chain image view to a framebuffer
+        };
+
+        VkFramebufferCreateInfo framebufferInfo{};
+        framebufferInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
+        framebufferInfo.renderPass = renderPass;               // Use the render pass we set up
+        framebufferInfo.attachmentCount = 1;
+        framebufferInfo.pAttachments = attachments;            // Attach the image view
+        framebufferInfo.width = swapChainExtent.width;         // Match the swap chain extent
+        framebufferInfo.height = swapChainExtent.height;
+        framebufferInfo.layers = 1;                            // Single-layer rendering
+
+        // Create the framebuffer for this image view
+        if (vkCreateFramebuffer(device, &framebufferInfo, nullptr, &swapChainFramebuffers[i]) != VK_SUCCESS) {
+            throw std::runtime_error("Failed to create framebuffer!");
+        }
+        }
+    }
+
 int main() {
     const std::filesystem::path baseResourcePath = std::filesystem::current_path() / ".." / ".." / ".." / "resources";
 
@@ -352,6 +384,10 @@ int main() {
     // Create render pass
     createRenderPass();
     std::cout << "Render pass created successfully!" << '\n';
+
+    // Create framebuffers
+    createFramebuffers();
+    std::cout << "Frame buffers created successfully!" << '\n';
 
     // Clean up
     cleanup();
