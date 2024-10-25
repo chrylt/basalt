@@ -16,8 +16,17 @@ VkDevice device;
 VkQueue graphicsQueue;
 VkSwapchainKHR swapChain;
 VkSurfaceKHR surface;  // Surface needed for swap chain creation
+std::vector<VkImage> swapChainImages;
+std::vector<VkImageView> swapChainImageViews;
+constexpr VkSurfaceFormatKHR surfaceFormat = { VK_FORMAT_B8G8R8A8_SRGB, VK_COLOR_SPACE_SRGB_NONLINEAR_KHR };
 
 void cleanup() {
+
+    // Destroy image views
+    for (auto imageView : swapChainImageViews) {
+        vkDestroyImageView(device, imageView, nullptr);
+    }
+
     // Destroy swap chain
     if (swapChain != VK_NULL_HANDLE) {
         vkDestroySwapchainKHR(device, swapChain, nullptr);
@@ -37,6 +46,8 @@ void cleanup() {
     if (instance != VK_NULL_HANDLE) {
         vkDestroyInstance(instance, nullptr);
     }
+
+    
 }
 
 struct QueueFamilyIndices {
@@ -175,7 +186,6 @@ void createSwapChain(GLFWwindow* window) {
     VkSurfaceCapabilitiesKHR capabilities;
     vkGetPhysicalDeviceSurfaceCapabilitiesKHR(physicalDevice, surface, &capabilities);
 
-    constexpr VkSurfaceFormatKHR surfaceFormat = { VK_FORMAT_B8G8R8A8_SRGB, VK_COLOR_SPACE_SRGB_NONLINEAR_KHR };
     constexpr VkPresentModeKHR presentMode = VK_PRESENT_MODE_FIFO_KHR;
 
     VkExtent2D extent;
@@ -224,6 +234,38 @@ void createSwapChain(GLFWwindow* window) {
     }
 }
 
+void createImageViews() {
+    uint32_t imageCount;
+    vkGetSwapchainImagesKHR(device, swapChain, &imageCount, nullptr);
+    swapChainImages.resize(imageCount);
+    vkGetSwapchainImagesKHR(device, swapChain, &imageCount, swapChainImages.data());
+
+    // Resize the image views vector to hold the views for each swap chain image
+    swapChainImageViews.resize(swapChainImages.size());
+
+    for (size_t i = 0; i < swapChainImages.size(); i++) {
+        VkImageViewCreateInfo viewInfo{};
+        viewInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+        viewInfo.image = swapChainImages[i];
+        viewInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;       // 2D texture (common for screen rendering)
+        viewInfo.format = surfaceFormat.format;          // Format should match the swap chain format
+        viewInfo.components.r = VK_COMPONENT_SWIZZLE_IDENTITY;  // No remapping of color channels
+        viewInfo.components.g = VK_COMPONENT_SWIZZLE_IDENTITY;
+        viewInfo.components.b = VK_COMPONENT_SWIZZLE_IDENTITY;
+        viewInfo.components.a = VK_COMPONENT_SWIZZLE_IDENTITY;
+        viewInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;  // We're rendering color
+        viewInfo.subresourceRange.baseMipLevel = 0;      // No mipmapping, so level 0 only
+        viewInfo.subresourceRange.levelCount = 1;
+        viewInfo.subresourceRange.baseArrayLayer = 0;    // Single-layer rendering
+        viewInfo.subresourceRange.layerCount = 1;
+
+        // Create the image view for this swap chain image
+        if (vkCreateImageView(device, &viewInfo, nullptr, &swapChainImageViews[i]) != VK_SUCCESS) {
+            throw std::runtime_error("Failed to create image view!");
+        }
+    }
+}
+
 int main() {
     const std::filesystem::path baseResourcePath = std::filesystem::current_path() / ".." / ".." / ".." / "resources";
 
@@ -250,6 +292,10 @@ int main() {
     // Create the swap chain
     createSwapChain(window);
     std::cout << "Swap chain created successfully!" << '\n';
+
+    // create image views
+    createImageViews();
+    std::cout << "Image views created successfully!" << '\n';
 
     // Clean up
     cleanup();
