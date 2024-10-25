@@ -19,8 +19,12 @@ VkSurfaceKHR surface;  // Surface needed for swap chain creation
 std::vector<VkImage> swapChainImages;
 std::vector<VkImageView> swapChainImageViews;
 constexpr VkSurfaceFormatKHR surfaceFormat = { VK_FORMAT_B8G8R8A8_SRGB, VK_COLOR_SPACE_SRGB_NONLINEAR_KHR };
+VkRenderPass renderPass;
 
 void cleanup() {
+
+    // Destroy render pass
+    vkDestroyRenderPass(device, renderPass, nullptr);
 
     // Destroy image views
     for (auto imageView : swapChainImageViews) {
@@ -266,6 +270,54 @@ void createImageViews() {
     }
 }
 
+void createRenderPass() {
+    // Define the color attachment
+    VkAttachmentDescription colorAttachment{};
+    colorAttachment.format = surfaceFormat.format;            // Use the swap chain image format
+    colorAttachment.samples = VK_SAMPLE_COUNT_1_BIT;          // No multisampling
+    colorAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;     // Clear the attachment at the start of the render pass
+    colorAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;   // Store the attachment's contents after the render pass
+    colorAttachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;  // No stencil, so don't care about stencil load/store
+    colorAttachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+    colorAttachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;    // Undefined layout before the render pass
+    colorAttachment.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR; // Presentable layout after the render pass
+
+    // Reference the color attachment in a subpass
+    VkAttachmentReference colorAttachmentRef{};
+    colorAttachmentRef.attachment = 0;    // Index of the color attachment
+    colorAttachmentRef.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;  // Optimal layout for color attachment usage
+
+    // Define a single subpass that uses the color attachment
+    VkSubpassDescription subpass{};
+    subpass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;  // Graphics pipeline for rendering
+    subpass.colorAttachmentCount = 1;
+    subpass.pColorAttachments = &colorAttachmentRef;             // Attach the color attachment to this subpass
+
+    // Specify render pass dependencies
+    VkSubpassDependency dependency{};
+    dependency.srcSubpass = VK_SUBPASS_EXTERNAL;     // Implicit subpass for operations outside the render pass
+    dependency.dstSubpass = 0;                       // Our first (and only) subpass
+    dependency.srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+    dependency.srcAccessMask = 0;
+    dependency.dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+    dependency.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+
+    // Set up the render pass with the color attachment and subpass
+    VkRenderPassCreateInfo renderPassInfo{};
+    renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
+    renderPassInfo.attachmentCount = 1;
+    renderPassInfo.pAttachments = &colorAttachment;
+    renderPassInfo.subpassCount = 1;
+    renderPassInfo.pSubpasses = &subpass;
+    renderPassInfo.dependencyCount = 1;
+    renderPassInfo.pDependencies = &dependency;
+
+    // Create the render pass
+    if (vkCreateRenderPass(device, &renderPassInfo, nullptr, &renderPass) != VK_SUCCESS) {
+        throw std::runtime_error("Failed to create render pass!");
+    }
+}
+
 int main() {
     const std::filesystem::path baseResourcePath = std::filesystem::current_path() / ".." / ".." / ".." / "resources";
 
@@ -293,9 +345,13 @@ int main() {
     createSwapChain(window);
     std::cout << "Swap chain created successfully!" << '\n';
 
-    // create image views
+    // Create image views
     createImageViews();
     std::cout << "Image views created successfully!" << '\n';
+
+    // Create render pass
+    createRenderPass();
+    std::cout << "Render pass created successfully!" << '\n';
 
     // Clean up
     cleanup();
