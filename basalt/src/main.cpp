@@ -61,8 +61,12 @@ VkShaderModule vertShaderModule;
 VkShaderModule fragShaderModule;
 VkPipelineLayout pipelineLayout;
 VkPipeline graphicsPipeline;
+VkCommandPool commandPool;
+std::vector<VkCommandBuffer> commandBuffers;
 
 void cleanup() {
+
+    vkDestroyCommandPool(device, commandPool, nullptr);
 
     vkDestroyShaderModule(device, vertShaderModule, nullptr);
     vkDestroyShaderModule(device, fragShaderModule, nullptr);
@@ -526,6 +530,72 @@ void createPipeline(const VkShaderModule& vertShaderModule, const VkShaderModule
     }
 }
 
+void createCommandPool() {
+	const QueueFamilyIndices queueFamilyIndices = findQueueFamilies(physicalDevice);
+
+    VkCommandPoolCreateInfo poolInfo{};
+    poolInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
+    poolInfo.queueFamilyIndex = queueFamilyIndices.graphics_family.value();
+    poolInfo.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;  // Allows resetting individual command buffers
+
+    if (vkCreateCommandPool(device, &poolInfo, nullptr, &commandPool) != VK_SUCCESS) {
+        throw std::runtime_error("Failed to create command pool!");
+    }
+}
+
+void allocateCommandBuffers() {
+    commandBuffers.resize(swapChainFramebuffers.size());
+
+    VkCommandBufferAllocateInfo allocInfo{};
+    allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+    allocInfo.commandPool = commandPool;
+    allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;  // Primary buffers can be directly submitted to queues
+    allocInfo.commandBufferCount = static_cast<uint32_t>(commandBuffers.size());
+
+    if (vkAllocateCommandBuffers(device, &allocInfo, commandBuffers.data()) != VK_SUCCESS) {
+        throw std::runtime_error("Failed to allocate command buffers!");
+    }
+}
+
+void recordCommandBuffers() {
+    for (size_t i = 0; i < commandBuffers.size(); i++) {
+        VkCommandBufferBeginInfo beginInfo{};
+        beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+        beginInfo.flags = VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT;  // Allows reusing command buffers
+
+        if (vkBeginCommandBuffer(commandBuffers[i], &beginInfo) != VK_SUCCESS) {
+            throw std::runtime_error("Failed to begin recording command buffer!");
+        }
+
+        // Start the render pass
+        VkRenderPassBeginInfo renderPassInfo{};
+        renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+        renderPassInfo.renderPass = renderPass;
+        renderPassInfo.framebuffer = swapChainFramebuffers[i];
+        renderPassInfo.renderArea.offset = { 0, 0 };
+        renderPassInfo.renderArea.extent = swapChainExtent;
+
+        VkClearValue clearColor = { {{0.0f, 0.0f, 0.0f, 1.0f}} };  // Clear to black
+        renderPassInfo.clearValueCount = 1;
+        renderPassInfo.pClearValues = &clearColor;
+
+        vkCmdBeginRenderPass(commandBuffers[i], &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
+
+        // Bind the graphics pipeline
+        vkCmdBindPipeline(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsPipeline);
+
+        // Draw command (drawing a triangle with 3 vertices, 1 instance)
+        vkCmdDraw(commandBuffers[i], 3, 1, 0, 0);
+
+        // End the render pass
+        vkCmdEndRenderPass(commandBuffers[i]);
+
+        if (vkEndCommandBuffer(commandBuffers[i]) != VK_SUCCESS) {
+            throw std::runtime_error("Failed to record command buffer!");
+        }
+    }
+}
+
 int main() {
     const std::filesystem::path baseResourcePath = std::filesystem::current_path() / ".." / ".." / ".." / "resources";
 
@@ -576,8 +646,6 @@ int main() {
     // Create pipeline
     createPipeline(vertShaderModule, fragShaderModule);
     std::cout << "Pipeline created successfully!" << '\n';
-
-
 
     // Clean up
     cleanup();
