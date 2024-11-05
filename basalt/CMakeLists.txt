@@ -61,5 +61,3 @@ add_dependencies(Basalt Shaders)
 
 # Ensure SPIR-V files are treated as source files for Basalt
 target_sources(Basalt PRIVATE ${SPIRV_FILES})
-
-
