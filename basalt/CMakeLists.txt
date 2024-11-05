@@ -44,8 +44,11 @@ FetchContent_MakeAvailable(assimp)
 # Vulkan (Graphics API)
 find_package(Vulkan REQUIRED)
 
-# Define the executable
-add_executable(Basalt src/main.cpp)
+# Add the shaders subdirectory for automatic compilation
+add_subdirectory(shaders)
+
+# Define the executable after all dependencies are set up
+add_executable(Basalt src/main.cpp src/library_test.cpp src/stb_image_impl.cpp)
 
 # Include directories
 target_include_directories(Basalt PUBLIC ${stb_SOURCE_DIR} ${Vulkan_INCLUDE_DIR})
@@ -53,3 +56,8 @@ target_include_directories(Basalt PUBLIC ${stb_SOURCE_DIR} ${Vulkan_INCLUDE_DIR}
 # Link libraries
 target_link_libraries(Basalt PUBLIC glm glfw Vulkan::Vulkan assimp::assimp)
 
+# Ensure the Shaders target is built before the Basalt executable
+add_dependencies(Basalt Shaders)
+
+# Ensure SPIR-V files are treated as source files for Basalt
+target_sources(Basalt PRIVATE ${SPIRV_FILES})
