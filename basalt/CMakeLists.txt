@@ -1,5 +1,5 @@
 ﻿cmake_minimum_required(VERSION 3.16)
-project(Basalt)
+project(BasaltProject)
 
 # Set C++ Standard
 set(CMAKE_CXX_STANDARD 17)
@@ -44,20 +44,7 @@ FetchContent_MakeAvailable(assimp)
 # Vulkan (Graphics API)
 find_package(Vulkan REQUIRED)
 
-# Add the shaders subdirectory for automatic compilation
+# Add subdirectories
+add_subdirectory(basalt)
 add_subdirectory(shaders)
-
-# Define the executable after all dependencies are set up
-add_executable(Basalt src/main.cpp src/library_test.cpp src/stb_image_impl.cpp)
-
-# Include directories
-target_include_directories(Basalt PUBLIC ${stb_SOURCE_DIR} ${Vulkan_INCLUDE_DIR})
-
-# Link libraries
-target_link_libraries(Basalt PUBLIC glm glfw Vulkan::Vulkan assimp::assimp)
-
-# Ensure the Shaders target is built before the Basalt executable
-add_dependencies(Basalt Shaders)
-
-# Ensure SPIR-V files are treated as source files for Basalt
-target_sources(Basalt PRIVATE ${SPIRV_FILES})
+add_subdirectory(examples/hello_triangle)
