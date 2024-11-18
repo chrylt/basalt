@@ -49,4 +49,4 @@ endfunction()
 compile_shaders(${CMAKE_CURRENT_SOURCE_DIR} ${SPIRV_OUTPUT_DIR})
 
 # Create a custom target for shader compilation
-add_custom_target(Shaders ALL DEPENDS ${SPIRV_FILES})
+add_custom_target(exampleShaders ALL DEPENDS ${SPIRV_FILES})
