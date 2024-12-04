@@ -37,6 +37,7 @@ namespace basalt {
         const std::vector<VkImageView>& getImageViews() const { return imageViews; }
         const std::vector<VkFramebuffer>& getFramebuffers() const { return framebuffers; }
         size_t getImageCount() const { return swapChainImages.size(); }
+        const std::vector<VkImage>& getImages() const { return swapChainImages; }
 
         // Methods
         void createFramebuffers(const RenderPass& renderPass);

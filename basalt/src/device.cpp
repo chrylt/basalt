@@ -99,21 +99,40 @@ namespace basalt {
             queueCreateInfos.push_back(queueCreateInfo);
         }
 
-        // Specify device features (none for now)
-        constexpr VkPhysicalDeviceFeatures deviceFeatures{};
+        // Initialize feature structures
+        accelStructFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ACCELERATION_STRUCTURE_FEATURES_KHR;
+        rayTracingPipelineFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_TRACING_PIPELINE_FEATURES_KHR;
+        descriptorIndexingFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_INDEXING_FEATURES;
+        bufferDeviceAddressFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_BUFFER_DEVICE_ADDRESS_FEATURES;
 
-        // Create logical device
+        // Chain the features together
+        bufferDeviceAddressFeatures.pNext = nullptr;
+        descriptorIndexingFeatures.pNext = &bufferDeviceAddressFeatures;
+        rayTracingPipelineFeatures.pNext = &descriptorIndexingFeatures;
+        accelStructFeatures.pNext = &rayTracingPipelineFeatures;
+
+        VkPhysicalDeviceFeatures2 deviceFeatures2{};
+        deviceFeatures2.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
+        deviceFeatures2.pNext = &accelStructFeatures;
+
+        // Query the features
+        vkGetPhysicalDeviceFeatures2(physicalDevice, &deviceFeatures2);
+
+        // Check if required features are supported
+        if (!accelStructFeatures.accelerationStructure || !rayTracingPipelineFeatures.rayTracingPipeline) {
+            throw std::runtime_error("Ray tracing not supported on this device.");
+        }
+
+        // Prepare device create info
         VkDeviceCreateInfo createInfo{};
         createInfo.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
-
+        createInfo.pNext = &deviceFeatures2;
         createInfo.queueCreateInfoCount = static_cast<uint32_t>(queueCreateInfos.size());
         createInfo.pQueueCreateInfos = queueCreateInfos.data();
-
-        createInfo.pEnabledFeatures = &deviceFeatures;
-
-        // Enable required device extensions
         createInfo.enabledExtensionCount = static_cast<uint32_t>(deviceExtensions.size());
         createInfo.ppEnabledExtensionNames = deviceExtensions.data();
+        createInfo.pEnabledFeatures = nullptr; // Must be null when using VkPhysicalDeviceFeatures2
+
 
         // Enable validation layers (deprecated, but required on some platforms)
         if (instance.enableValidationLayers) {
@@ -128,10 +147,22 @@ namespace basalt {
             throw std::runtime_error("Failed to create logical device!");
         }
 
+        // Query ray tracing properties after device creation
+        queryRayTracingProperties();
+
         // Retrieve queues
         vkGetDeviceQueue(device, queueFamilyIndices.graphics_family.value(), 0, &graphicsQueue);
         vkGetDeviceQueue(device, queueFamilyIndices.present_family.value(), 0, &presentQueue);
         vkGetDeviceQueue(device, queueFamilyIndices.transfer_family.value(), 0, &transferQueue);
+    }
+
+    void Device::queryRayTracingProperties() {
+        // Initialize ray tracing pipeline properties
+        rayTracingPipelineProperties.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_TRACING_PIPELINE_PROPERTIES_KHR;
+        VkPhysicalDeviceProperties2 deviceProperties2{};
+        deviceProperties2.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2;
+        deviceProperties2.pNext = &rayTracingPipelineProperties;
+        vkGetPhysicalDeviceProperties2(physicalDevice, &deviceProperties2);
     }
 
     QueueFamilyIndices Device::findQueueFamilies(const VkPhysicalDevice device) const

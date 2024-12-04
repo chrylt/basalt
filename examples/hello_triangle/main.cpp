@@ -38,9 +38,9 @@ std::vector<basalt::SimpleVertex2D> vertices = {
     {{-0.5f,  0.5f}, { 0.0f, 0.0f, 1.0f }}   // Left vertex (Blue)
 };
 
-class BasaltApp {
+class VolumeApp {
 public:
-    BasaltApp() {
+    VolumeApp() {
         initWindow();
         initVulkan();
     }
@@ -91,12 +91,12 @@ private:
 
     // Callback for framebuffer resize
     static void framebufferResizeCallback(GLFWwindow* window, int width, int height) {
-	    const auto app = static_cast<BasaltApp*>(glfwGetWindowUserPointer(window));
+	    const auto app = static_cast<VolumeApp*>(glfwGetWindowUserPointer(window));
         app->framebufferResized = true;
     }
 };
 
-void BasaltApp::initWindow() {
+void VolumeApp::initWindow() {
     // Initialize GLFW
     if (!glfwInit()) {
         throw std::runtime_error("Failed to initialize GLFW!");
@@ -117,7 +117,7 @@ void BasaltApp::initWindow() {
     glfwSetFramebufferSizeCallback(window, framebufferResizeCallback);
 }
 
-void BasaltApp::initVulkan() {
+void VolumeApp::initVulkan() {
     // Create Vulkan instance
     instance = std::make_unique<basalt::Instance>();
 
@@ -156,7 +156,7 @@ void BasaltApp::initVulkan() {
     createSyncObjects();
 }
 
-void BasaltApp::createVertexBuffer()
+void VolumeApp::createVertexBuffer()
 {
     const VkDeviceSize vertexBufferSize = sizeof(vertices[0]) * vertices.size();
     vertexBuffer = std::make_unique<basalt::Buffer>(*device, vertexBufferSize,
@@ -165,7 +165,7 @@ void BasaltApp::createVertexBuffer()
     vertexBuffer->updateBuffer(*commandPool, reinterpret_cast<void*>(vertices.data()), vertexBufferSize);
 }
 
-void BasaltApp::createCommandBuffers() {
+void VolumeApp::createCommandBuffers() {
     commandBuffers.resize(swapChain->getFramebuffers().size());
 
     for (size_t i = 0; i < commandBuffers.size(); ++i) {
@@ -186,11 +186,11 @@ void BasaltApp::createCommandBuffers() {
     }
 }
 
-void BasaltApp::createSyncObjects() {
+void VolumeApp::createSyncObjects() {
     syncObjects = std::make_unique<basalt::SyncObjects>(*device, MAX_FRAMES_IN_FLIGHT);
 }
 
-void BasaltApp::mainLoop() {
+void VolumeApp::mainLoop() {
     while (!glfwWindowShouldClose(window)) {
         glfwPollEvents();
         drawFrame();
@@ -200,7 +200,7 @@ void BasaltApp::mainLoop() {
     vkDeviceWaitIdle(device->getDevice());
 }
 
-void BasaltApp::drawFrame() {
+void VolumeApp::drawFrame() {
     // Wait for the current frame's fence to be signaled
     syncObjects->waitForInFlightFence(currentFrame);
 
@@ -249,7 +249,7 @@ void BasaltApp::drawFrame() {
     currentFrame = (currentFrame + 1) % syncObjects->getMaxFramesInFlight();
 }
 
-void BasaltApp::recreateSwapChain() {
+void VolumeApp::recreateSwapChain() {
     // Wait until the window is not minimized
     int width = 0, height = 0;
     glfwGetFramebufferSize(window, &width, &height);
@@ -283,7 +283,7 @@ void BasaltApp::recreateSwapChain() {
     createCommandBuffers();
 }
 
-void BasaltApp::cleanup() const {
+void VolumeApp::cleanup() const {
     // Wait for device to finish operations before cleanup
     vkDeviceWaitIdle(device->getDevice());
 
@@ -296,7 +296,7 @@ void BasaltApp::cleanup() const {
 
 int main() {
     try {
-        BasaltApp app;
+        VolumeApp app;
         app.run();
     }
     catch (const std::exception& e) {

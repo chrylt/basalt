@@ -6,7 +6,7 @@ target_link_libraries(HelloTriangle PRIVATE Basalt)
 add_dependencies(HelloTriangle Shaders)
 
 # Include directories
-target_include_directories(HelloTriangle PRIVATE ${Vulkan_INCLUDE_DIRS} ${GLM_INCLUDE_DIRS})
+target_include_directories(HelloTriangle PRIVATE ${Vulkan_INCLUDE_DIRS} glm::glm)
 
 # Copy compiled shaders to the output directory
 add_custom_command(TARGET HelloTriangle POST_BUILD

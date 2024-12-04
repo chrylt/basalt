@@ -26,6 +26,9 @@ namespace basalt {
         // Function to transition image layouts
         void transitionImageLayout(Device& device, const CommandPool& commandPool, const Queue& queue,
             VkImage image, VkFormat format, VkImageLayout oldLayout, VkImageLayout newLayout);
+        void transitionImageLayout(Device& device, const CommandPool& commandPool, const VkQueue& queue,
+            VkImage image, VkFormat format, VkImageLayout oldLayout, VkImageLayout newLayout);
+
 
         // Function to create an image view
         VkImageView createImageView(const Device& device, VkImage image, VkFormat format, VkImageAspectFlags aspectFlags);

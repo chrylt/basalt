@@ -44,10 +44,10 @@ namespace basalt {
             commandPool.endSingleTimeCommands(commandBuffer, queue);
         }
 
-        void transitionImageLayout(Device& device, const CommandPool& commandPool, const Queue& queue,
-                                   const VkImage image, VkFormat format, const VkImageLayout oldLayout, const VkImageLayout newLayout)
+        void transitionImageLayout(Device& device, const CommandPool& commandPool, const VkQueue& queue,
+            const VkImage image, VkFormat format, const VkImageLayout oldLayout, const VkImageLayout newLayout)
         {
-	        const VkCommandBuffer commandBuffer = commandPool.beginSingleTimeCommands();
+            const VkCommandBuffer commandBuffer = commandPool.beginSingleTimeCommands();
 
             VkImageMemoryBarrier barrier{};
             barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
@@ -91,7 +91,13 @@ namespace basalt {
                 1, &barrier
             );
 
-            commandPool.endSingleTimeCommands(commandBuffer, queue.getGraphicsQueue());
+            commandPool.endSingleTimeCommands(commandBuffer, queue);
+        }
+
+        void transitionImageLayout(Device& device, const CommandPool& commandPool, const Queue& queue,
+            const VkImage image, VkFormat format, const VkImageLayout oldLayout, const VkImageLayout newLayout)
+        {
+            transitionImageLayout(device, commandPool, queue.getGraphicsQueue(), image, format, oldLayout, newLayout);
         }
 
         VkImageView createImageView(const Device& device, const VkImage image, const VkFormat format, const VkImageAspectFlags aspectFlags)
