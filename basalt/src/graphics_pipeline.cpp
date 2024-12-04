@@ -1,4 +1,4 @@
-#include "pipeline.h"
+#include "graphics_pipeline.h"
 
 #include <stdexcept>
 
@@ -9,17 +9,16 @@
 
 namespace basalt {
 
-    Pipeline::Pipeline(Device& device, RenderPass& renderPass, SwapChain& swapChain,
+    GraphicsPipeline::GraphicsPipeline(Device& device, RenderPass& renderPass, SwapChain& swapChain,
         const std::string& vertShaderPath, const std::string& fragShaderPath,
-        const VkVertexInputBindingDescription bindingDescription,
-        const std::vector<VkVertexInputAttributeDescription>& attributeDescriptions)
-        : device(device), renderPass(renderPass), swapChain(swapChain),
-        graphicsPipeline(VK_NULL_HANDLE), pipelineLayout(VK_NULL_HANDLE)
+        const VkPipelineVertexInputStateCreateInfo& vertexInputInfo,
+        VkDescriptorSetLayout descriptorSetLayout) : device(device), renderPass(renderPass), swapChain(swapChain),
+                                                           graphicsPipeline(VK_NULL_HANDLE), pipelineLayout(VK_NULL_HANDLE)
     {
-        createGraphicsPipeline(vertShaderPath, fragShaderPath, bindingDescription, attributeDescriptions);
+        createGraphicsPipeline(vertShaderPath, fragShaderPath, vertexInputInfo, descriptorSetLayout);
     }
 
-    Pipeline::~Pipeline()
+    GraphicsPipeline::~GraphicsPipeline()
     {
 	    const VkDevice vkDevice = device.getDevice();
 
@@ -34,9 +33,11 @@ namespace basalt {
         }
     }
 
-    void Pipeline::createGraphicsPipeline(const std::string& vertShaderPath, const std::string& fragShaderPath,
-        VkVertexInputBindingDescription bindingDescription,
-        const std::vector<VkVertexInputAttributeDescription>& attributeDescriptions)
+    void GraphicsPipeline::createGraphicsPipeline(
+        const std::string& vertShaderPath,
+        const std::string& fragShaderPath,
+        const VkPipelineVertexInputStateCreateInfo& vertexInputInfo,
+        VkDescriptorSetLayout descriptorSetLayout)
     {
         VkDevice vkDevice = device.getDevice();
 
@@ -58,14 +59,6 @@ namespace basalt {
         fragShaderStageInfo.pName = "main";
 
         VkPipelineShaderStageCreateInfo shaderStages[] = { vertShaderStageInfo, fragShaderStageInfo };
-
-        // Vertex input state
-        VkPipelineVertexInputStateCreateInfo vertexInputInfo{};
-        vertexInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
-        vertexInputInfo.vertexBindingDescriptionCount = 1;
-        vertexInputInfo.pVertexBindingDescriptions = &bindingDescription;
-        vertexInputInfo.vertexAttributeDescriptionCount = static_cast<uint32_t>(attributeDescriptions.size());
-        vertexInputInfo.pVertexAttributeDescriptions = attributeDescriptions.data();
 
         // Input assembly state
         VkPipelineInputAssemblyStateCreateInfo inputAssembly{};
@@ -123,19 +116,27 @@ namespace basalt {
         colorBlending.attachmentCount = 1;
         colorBlending.pAttachments = &colorBlendAttachment;
 
-        // Pipeline layout
+        // GraphicsPipeline layout
         VkPipelineLayoutCreateInfo pipelineLayoutInfo{};
         pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-        pipelineLayoutInfo.setLayoutCount = 0;       // No descriptor sets
-        pipelineLayoutInfo.pSetLayouts = nullptr;
-        pipelineLayoutInfo.pushConstantRangeCount = 0;       // No push constants
+
+        if (descriptorSetLayout != VK_NULL_HANDLE) {
+            pipelineLayoutInfo.setLayoutCount = 1;
+            pipelineLayoutInfo.pSetLayouts = &descriptorSetLayout;
+        }
+        else {
+            pipelineLayoutInfo.setLayoutCount = 0;
+            pipelineLayoutInfo.pSetLayouts = nullptr;
+        }
+
+        pipelineLayoutInfo.pushConstantRangeCount = 0;
         pipelineLayoutInfo.pPushConstantRanges = nullptr;
 
         if (vkCreatePipelineLayout(vkDevice, &pipelineLayoutInfo, nullptr, &pipelineLayout) != VK_SUCCESS) {
             throw std::runtime_error("Failed to create pipeline layout!");
         }
 
-        // Pipeline create info
+        // GraphicsPipeline create info
         VkGraphicsPipelineCreateInfo pipelineInfo{};
         pipelineInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
         pipelineInfo.stageCount = 2;

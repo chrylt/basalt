@@ -1,9 +1,12 @@
 #pragma once
 
+#include <stdexcept>
 #include <string>
 #include <vector>
 
 #include <vulkan/vulkan.h>
+
+#include "device.h"
 
 namespace basalt {
 
@@ -32,6 +35,8 @@ namespace basalt {
 
         // Function to create an image view
         VkImageView createImageView(const Device& device, VkImage image, VkFormat format, VkImageAspectFlags aspectFlags);
+
+        VkFormat findSupportedFormat(const Device& device, const std::vector<VkFormat>& candidates, const VkImageTiling tiling, const VkFormatFeatureFlags features);
 
     } // namespace utils
 

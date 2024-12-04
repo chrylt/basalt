@@ -13,7 +13,7 @@
 #include "command_pool.h"
 #include "device.h"
 #include "instance.h"
-#include "pipeline.h"
+#include "graphics_pipeline.h"
 #include "renderpass.h"
 #include "simple_vertex_2D.h"
 #include "surface.h"
@@ -60,7 +60,7 @@ private:
     std::unique_ptr<basalt::Device> device;
     std::unique_ptr<basalt::SwapChain> swapChain;
     std::unique_ptr<basalt::RenderPass> renderPass;
-    std::unique_ptr<basalt::Pipeline> pipeline;
+    std::unique_ptr<basalt::GraphicsPipeline> pipeline;
     std::unique_ptr<basalt::CommandPool> commandPool;
     std::unique_ptr<basalt::Buffer> vertexBuffer;
     std::unique_ptr<basalt::SyncObjects> syncObjects;
@@ -76,6 +76,7 @@ private:
     void initWindow();
     void initVulkan();
     void createVertexBuffer();
+    void createGraphicsPipeline(); // New function
     void createCommandBuffers();
     void createSyncObjects();
 
@@ -91,7 +92,7 @@ private:
 
     // Callback for framebuffer resize
     static void framebufferResizeCallback(GLFWwindow* window, int width, int height) {
-	    const auto app = static_cast<VolumeApp*>(glfwGetWindowUserPointer(window));
+        auto app = static_cast<VolumeApp*>(glfwGetWindowUserPointer(window));
         app->framebufferResized = true;
     }
 };
@@ -134,11 +135,7 @@ void VolumeApp::initVulkan() {
     renderPass = std::make_unique<basalt::RenderPass>(*device, swapChain->getImageFormat());
 
     // Create graphics pipeline
-    VkVertexInputBindingDescription bindingDescription = basalt::SimpleVertex2D::getBindingDescription();
-    std::vector<VkVertexInputAttributeDescription> attributeDescriptions = basalt::SimpleVertex2D::getAttributeDescriptions();
-
-    pipeline = std::make_unique<basalt::Pipeline>(*device, *renderPass, *swapChain, VERT_SHADER_PATH, FRAG_SHADER_PATH,
-        bindingDescription, attributeDescriptions);
+    createGraphicsPipeline();
 
     // Create command pool
     commandPool = std::make_unique<basalt::CommandPool>(*device, device->getGraphicsQueueFamilyIndex());
@@ -156,8 +153,29 @@ void VolumeApp::initVulkan() {
     createSyncObjects();
 }
 
-void VolumeApp::createVertexBuffer()
-{
+void VolumeApp::createGraphicsPipeline() {
+    // Create graphics pipeline
+    VkVertexInputBindingDescription bindingDescription = basalt::SimpleVertex2D::getBindingDescription();
+    std::vector<VkVertexInputAttributeDescription> attributeDescriptions = basalt::SimpleVertex2D::getAttributeDescriptions();
+
+    VkPipelineVertexInputStateCreateInfo vertexInputInfo{};
+    vertexInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
+    vertexInputInfo.vertexBindingDescriptionCount = 1;
+    vertexInputInfo.pVertexBindingDescriptions = &bindingDescription;
+    vertexInputInfo.vertexAttributeDescriptionCount = static_cast<uint32_t>(attributeDescriptions.size());
+    vertexInputInfo.pVertexAttributeDescriptions = attributeDescriptions.data();
+
+    pipeline = std::make_unique<basalt::GraphicsPipeline>(
+        *device,
+        *renderPass,
+        *swapChain,
+        VERT_SHADER_PATH,
+        FRAG_SHADER_PATH,
+        vertexInputInfo
+    );
+}
+
+void VolumeApp::createVertexBuffer() {
     const VkDeviceSize vertexBufferSize = sizeof(vertices[0]) * vertices.size();
     vertexBuffer = std::make_unique<basalt::Buffer>(*device, vertexBufferSize,
         VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
@@ -173,7 +191,7 @@ void VolumeApp::createCommandBuffers() {
 
         commandBuffers[i]->begin(VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT);
 
-	    constexpr VkClearValue clearColor = { {0.0f, 0.0f, 0.0f, 1.0f} };
+        VkClearValue clearColor = { {0.0f, 0.0f, 0.0f, 1.0f} };
         commandBuffers[i]->beginRenderPass(renderPass->getRenderPass(), swapChain->getFramebuffers()[i], swapChain->getExtent(), clearColor);
 
         commandBuffers[i]->bindPipeline(pipeline->getPipeline());
@@ -220,9 +238,9 @@ void VolumeApp::drawFrame() {
     syncObjects->resetInFlightFence(currentFrame);
 
     // Prepare synchronization parameters
-    const VkSemaphore waitSemaphores[] = { syncObjects->getImageAvailableSemaphore(currentFrame) };
-    constexpr VkPipelineStageFlags waitStages[] = { VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT };
-    const VkSemaphore signalSemaphores[] = { syncObjects->getRenderFinishedSemaphore(currentFrame) };
+    VkSemaphore waitSemaphores[] = { syncObjects->getImageAvailableSemaphore(currentFrame) };
+    VkPipelineStageFlags waitStages[] = { VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT };
+    VkSemaphore signalSemaphores[] = { syncObjects->getRenderFinishedSemaphore(currentFrame) };
 
     // Submit the command buffer for execution using Device method
     if (device->submitCommandBuffers(
@@ -268,18 +286,13 @@ void VolumeApp::recreateSwapChain() {
     renderPass = std::make_unique<basalt::RenderPass>(*device, swapChain->getImageFormat());
 
     // Recreate graphics pipeline with the new render pass and swap chain
-    VkVertexInputBindingDescription bindingDescription = basalt::SimpleVertex2D::getBindingDescription();
-    std::vector<VkVertexInputAttributeDescription> attributeDescriptions = basalt::SimpleVertex2D::getAttributeDescriptions();
-
-    pipeline = std::make_unique<basalt::Pipeline>(*device, *renderPass, *swapChain, VERT_SHADER_PATH, FRAG_SHADER_PATH,
-        bindingDescription, attributeDescriptions);
+    createGraphicsPipeline();
 
     // Recreate framebuffers
     swapChain->createFramebuffers(*renderPass);
 
     // Re-record command buffers with the new framebuffers and pipeline
     commandBuffers.clear();
-    commandBuffers.resize(swapChain->getFramebuffers().size());
     createCommandBuffers();
 }
 

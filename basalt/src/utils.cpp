@@ -47,7 +47,7 @@ namespace basalt {
         void transitionImageLayout(Device& device, const CommandPool& commandPool, const VkQueue& queue,
             const VkImage image, VkFormat format, const VkImageLayout oldLayout, const VkImageLayout newLayout)
         {
-            const VkCommandBuffer commandBuffer = commandPool.beginSingleTimeCommands();
+	        const VkCommandBuffer commandBuffer = commandPool.beginSingleTimeCommands();
 
             VkImageMemoryBarrier barrier{};
             barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
@@ -57,27 +57,19 @@ namespace basalt {
             barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
             barrier.image = image;
             barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-            barrier.subresourceRange.baseMipLevel = 0;
             barrier.subresourceRange.levelCount = 1;
-            barrier.subresourceRange.baseArrayLayer = 0;
             barrier.subresourceRange.layerCount = 1;
 
             VkPipelineStageFlags sourceStage;
             VkPipelineStageFlags destinationStage;
 
-            // Handle specific layout transitions
-            if (oldLayout == VK_IMAGE_LAYOUT_UNDEFINED && newLayout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL) {
+            if (oldLayout == VK_IMAGE_LAYOUT_UNDEFINED && newLayout == VK_IMAGE_LAYOUT_GENERAL) {
                 barrier.srcAccessMask = 0;
-                barrier.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+                barrier.dstAccessMask = VK_ACCESS_SHADER_WRITE_BIT | VK_ACCESS_SHADER_READ_BIT;
                 sourceStage = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
-                destinationStage = VK_PIPELINE_STAGE_TRANSFER_BIT;
+                destinationStage = VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT | VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
             }
-            else if (oldLayout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL && newLayout == VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL) {
-                barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
-                barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
-                sourceStage = VK_PIPELINE_STAGE_TRANSFER_BIT;
-                destinationStage = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
-            }
+            // Add other transitions if needed
             else {
                 throw std::invalid_argument("Unsupported layout transition!");
             }
@@ -95,7 +87,7 @@ namespace basalt {
         }
 
         void transitionImageLayout(Device& device, const CommandPool& commandPool, const Queue& queue,
-            const VkImage image, VkFormat format, const VkImageLayout oldLayout, const VkImageLayout newLayout)
+            const VkImage image, const VkFormat format, const VkImageLayout oldLayout, const VkImageLayout newLayout)
         {
             transitionImageLayout(device, commandPool, queue.getGraphicsQueue(), image, format, oldLayout, newLayout);
         }
@@ -123,6 +115,22 @@ namespace basalt {
             }
 
             return imageView;
+        }
+
+        VkFormat findSupportedFormat(const Device& device, const std::vector<VkFormat>& candidates, const VkImageTiling tiling, const VkFormatFeatureFlags features)
+        {
+            for (const VkFormat format : candidates) {
+                VkFormatProperties props;
+                vkGetPhysicalDeviceFormatProperties(device.getPhysicalDevice(), format, &props);
+
+                if (tiling == VK_IMAGE_TILING_LINEAR && (props.linearTilingFeatures & features) == features) {
+                    return format;
+                }
+                else if (tiling == VK_IMAGE_TILING_OPTIMAL && (props.optimalTilingFeatures & features) == features) {
+                    return format;
+                }
+            }
+            throw std::runtime_error("Failed to find a supported format!");
         }
 
     } // namespace utils
